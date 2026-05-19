@@ -1,0 +1,74 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[oc]
+*.pyd
+build/
+dist/
+wheels/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+MANIFEST
+
+# ── uv ────────────────────────────────────────────────────────────────────────
+.venv/
+# uv.lock is usually committed so teammates get reproducible installs.
+# Uncomment the line below only if you intentionally want to exclude it.
+# uv.lock
+
+# ── Environment & secrets ─────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+secrets/
+
+# ── FastAPI / Uvicorn ─────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── LangGraph / LangChain ─────────────────────────────────────────────────────
+.langchain/
+.langgraph/
+langsmith_traces/
+# Local SQLite checkpointer DBs
+*.db
+*.sqlite
+*.sqlite3
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+.tox/
+
+# ── Type checking ─────────────────────────────────────────────────────────────
+.mypy_cache/
+.pyright/
+.ruff_cache/
+
+# ── Editors ───────────────────────────────────────────────────────────────────
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+.dockerignore
+docker-compose.override.yml
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+.cache/
+tmp/
+temp/
