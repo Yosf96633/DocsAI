@@ -12,6 +12,26 @@ interface UploadPanelProps {
   onSuccess: (docName: string, docType: string, totalChunks: number) => void;
 }
 
+// ── Friendly status mapper — no technical jargon ─────────────────────────────
+function friendlyUploadStatus(msg: string): string {
+  const m = msg.toLowerCase();
+  if (m.includes("extract") || m.includes("read") || m.includes("pars"))
+    return "📄 Reading your document...";
+  if (m.includes("chunk") || m.includes("split") || m.includes("page"))
+    return "✂️ Breaking it into sections...";
+  if (m.includes("embed") || m.includes("vector") || m.includes("encod"))
+    return "🧠 Understanding the content...";
+  if (m.includes("store") || m.includes("index") || m.includes("qdrant") || m.includes("sav"))
+    return "💾 Saving to your library...";
+  if (m.includes("llm") || m.includes("check") || m.includes("analyz") || m.includes("verif"))
+    return "🔍 Checking document type...";
+  if (m.includes("done") || m.includes("complete") || m.includes("finish") || m.includes("ready"))
+    return "✅ All done! Opening chat...";
+  if (m.includes("legal") || m.includes("contract") || m.includes("compliance"))
+    return "📋 Legal document confirmed...";
+  return "⚙️ Processing your document...";
+}
+
 export default function UploadPanel({ threadId, onSuccess }: UploadPanelProps) {
   const { toast } = useToast();
   const { ingestionStatus, addIngestionStatus, clearIngestionStatus } = useChatStore();
@@ -55,11 +75,9 @@ export default function UploadPanel({ threadId, onSuccess }: UploadPanelProps) {
       const res = await ingestDocument(threadId, file);
       await readSSEStream(res, (event) => {
         if (event.type === "status") {
-          addIngestionStatus(event.message as string);
+          addIngestionStatus(friendlyUploadStatus(event.message as string));
         } else if (event.type === "llm_check") {
-          addIngestionStatus(
-            `📋 ${event.document_type} detected — confidence: ${event.confidence}`
-          );
+          addIngestionStatus("🔍 Checking document type...");
         } else if (event.type === "rejected") {
           setRejected({
             message: event.message as string,
@@ -67,7 +85,7 @@ export default function UploadPanel({ threadId, onSuccess }: UploadPanelProps) {
           });
           setUploading(false);
         } else if (event.type === "done") {
-          addIngestionStatus(event.message as string);
+          addIngestionStatus("✅ All done! Opening chat...");
           setTimeout(() => {
             onSuccess(file.name, "Legal Document", event.total_chunks as number);
           }, 1500);
@@ -137,7 +155,7 @@ export default function UploadPanel({ threadId, onSuccess }: UploadPanelProps) {
           className="w-full mt-4 py-3 rounded-xl bg-[#2d5a3d] text-white text-sm font-medium hover:bg-[#4a8a5f] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {uploading && <Loader2 size={15} className="animate-spin" />}
-          {uploading ? "Analyzing..." : "Upload & Analyze"}
+          {uploading ? "Analyzing your document..." : "Upload & Analyze"}
         </button>
 
         {/* Rejection */}
@@ -151,7 +169,7 @@ export default function UploadPanel({ threadId, onSuccess }: UploadPanelProps) {
           </div>
         )}
 
-        {/* Progress */}
+        {/* Progress steps */}
         <AnimatePresence>
           {ingestionStatus.length > 0 && (
             <div className="mt-6 space-y-2">

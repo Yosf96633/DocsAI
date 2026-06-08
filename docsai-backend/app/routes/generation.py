@@ -1,20 +1,27 @@
-from fastapi import APIRouter , Request
+from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 import json
 from app.core import clients
-
+from langchain_core.runnables import RunnableConfig
 
 router = APIRouter(prefix='/v1')
+
 
 class RequestBody(BaseModel):
     thread_id: str
     query: str
 
 
-async def generation_stream(thread_id: str, query: str):
-    config = {"configurable": {"thread_id": thread_id}}
+async def generation_stream(thread_id: str, query: str , user_id:str , username:str):
+    config: RunnableConfig = {"configurable": {"thread_id": thread_id}, "metadata": {
+        "thread_id": thread_id,
+        "user_id": user_id,
+        "username": username,
+    },
+        "tags": ["production", "docsai"],
+        "run_name": "DocsAI Chat Run"}
 
     yield f"data: {json.dumps({'type': 'status', 'message': 'Analyzing your query...'})}\n\n"
 
@@ -47,16 +54,16 @@ async def generation_stream(thread_id: str, query: str):
 
 
 @router.post("/chat-completion")
-async def generation(body: RequestBody):
+async def generation(req:Request , body: RequestBody):
     return StreamingResponse(
-        generation_stream(body.thread_id, body.query),
+        generation_stream(body.thread_id, body.query , req.state.user_id , req.state.username),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
     )
 
 
 @router.get("/messages")
-async def get_messages(request : Request, thread_id: str):
+async def get_messages(request: Request, thread_id: str):
     config = {"configurable": {"thread_id": thread_id}}
     state = await clients.chat_graph.aget_state(config)
 

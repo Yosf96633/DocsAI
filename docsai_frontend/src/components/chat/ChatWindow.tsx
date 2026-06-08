@@ -42,7 +42,7 @@ export default function ChatWindow({ threadId, docName, totalChunks }: ChatWindo
       content: query,
     });
 
-    // Add empty AI message with streaming flag
+    // Add empty AI placeholder with streaming flag
     addMessage(threadId, {
       id: crypto.randomUUID(),
       role: "ai",
@@ -54,10 +54,11 @@ export default function ChatWindow({ threadId, docName, totalChunks }: ChatWindo
       const res = await chatCompletion(threadId, query);
       await readSSEStream(res, (event) => {
         if (event.type === "status") {
-          setStatusText(event.message as string);
+          setStatusText(friendlyQueryStatus(event.message as string));
         } else if (event.type === "sources") {
           updateLastAiMessage(threadId, { sources: event.sources as Source[] });
         } else if (event.type === "token") {
+          setStatusText(""); // clear status once tokens start flowing
           appendToken(threadId, event.token as string);
         }
       });
@@ -94,26 +95,24 @@ export default function ChatWindow({ threadId, docName, totalChunks }: ChatWindo
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
         {threadMessages.length === 0 && (
           <div className="text-center text-[#9a9690] text-sm mt-20">
-            <p className="font-serif text-lg text-[#0f0e0c] mb-2">
-              Document ready
-            </p>
+            <p className="font-serif text-lg text-[#0f0e0c] mb-2">Document ready</p>
             <p>Ask anything about your document and get cited answers.</p>
           </div>
         )}
-        {threadMessages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} />
+        {threadMessages.map((msg, i) => (
+          <MessageBubble
+            key={msg.id}
+            message={msg}
+            statusText={
+              msg.streaming && i === threadMessages.length - 1 ? statusText : ""
+            }
+          />
         ))}
         <div ref={bottomRef} />
       </div>
 
-      {/* Status + Input */}
+      {/* Input */}
       <div className="px-4 sm:px-6 pb-6 pt-2 border-t border-black/8 bg-white">
-        {statusText && (
-          <div className="flex items-center gap-2 text-xs text-[#9a9690] mb-2 px-1">
-            <Loader2 size={11} className="animate-spin" />
-            {statusText}
-          </div>
-        )}
         <div className="flex gap-2">
           <input
             type="text"
@@ -139,4 +138,18 @@ export default function ChatWindow({ threadId, docName, totalChunks }: ChatWindo
       </div>
     </div>
   );
+}
+
+// ── Friendly status text for query flow ─────────────────────────────────────
+function friendlyQueryStatus(msg: string): string {
+  const m = msg.toLowerCase();
+  if (m.includes("retriev") || m.includes("search") || m.includes("fetch"))
+    return "🔍 Looking through your document...";
+  if (m.includes("rerank") || m.includes("rank") || m.includes("score"))
+    return "📊 Finding the most relevant parts...";
+  if (m.includes("generat") || m.includes("llm") || m.includes("complet"))
+    return "✍️ Writing your answer...";
+  if (m.includes("source") || m.includes("citat"))
+    return "📎 Gathering sources...";
+  return "⏳ Thinking...";
 }

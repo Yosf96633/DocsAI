@@ -31,7 +31,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const data = await register(form.username, form.email, form.password);
-      setAuth(data.token, { username: form.username, email: form.email });
+      setAuth({ username: form.username, email: form.email });
       toast({ title: "Welcome to DocsAI!", description: data.message });
       router.push("/chat");
     } catch (err: unknown) {
@@ -61,8 +61,8 @@ export default function RegisterPage() {
 
         <div className="space-y-4">
           {[
-            { key: "username", label: "Username", type: "text", placeholder: "yousaf" },
-            { key: "email", label: "Email", type: "email", placeholder: "you@example.com" },
+            { key: "username", label: "Username", type: "text", placeholder: "john" },
+            { key: "email", label: "Email", type: "email", placeholder: "john@example.com" },
             { key: "password", label: "Password", type: "password", placeholder: "Min. 6 characters" },
           ].map(({ key, label, type, placeholder }) => (
             <div key={key}>

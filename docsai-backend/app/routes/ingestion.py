@@ -2,12 +2,22 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from app.services.ingestion.graph import graph
 import json
-
+from langchain_core.runnables import RunnableConfig
 router = APIRouter(prefix='/v1')
 
 MAX_FILE_SIZE = 10 * 1024 * 1024
 
-async def ingestion_stream(thread_id: str, raw_bytes: bytes, filename: str, user_id: str):
+
+async def ingestion_stream(thread_id: str, raw_bytes: bytes, filename: str, user_id: str, username: str):
+    config: RunnableConfig = {
+        "metadata": {
+            "thread_id": thread_id,
+            "user_id": user_id,
+            "username": username,
+        },
+        "tags": ["production", "docsai"],
+        "run_name": "DocsAI Chat Run"
+    }
     async for event in graph.astream_events(
         {
             "bytes": raw_bytes,
@@ -15,7 +25,8 @@ async def ingestion_stream(thread_id: str, raw_bytes: bytes, filename: str, user
             "user_id": user_id,          # ← inside the input dict
             "metadata": {"filename": filename}
         },
-        version="v2"
+        version="v2",
+        config=config
     ):
         kind = event["event"]
         name = event.get("name", "")
@@ -65,13 +76,15 @@ async def ingestion_pipeline(
 
     raw_bytes = await file.read()
     user_id = request.state.user_id
+    username = request.state.username
 
     if len(raw_bytes) > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=400, detail=f"File too large. Max size: {MAX_FILE_SIZE // (1024 * 1024)} MB")
 
     return StreamingResponse(
-        ingestion_stream(thread_id, raw_bytes, file.filename, user_id),
+        ingestion_stream(thread_id, raw_bytes,
+                         file.filename, user_id, username),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
     )
