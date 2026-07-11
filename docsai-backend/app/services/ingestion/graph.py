@@ -1,20 +1,29 @@
-# graph.py
-from .nodes import LLM_check_node, rejection_node, citation_extraction_node,  chunking_node, embedding_and_inserting_node, route_to_rejection_or_chunking, save_to_cloudinary_and_db_node
+# app/services/ingestion/graph.py
+from .nodes import (
+    LLM_check_node,
+    rejection_node,
+    citation_extraction_node,
+    chunking_node,
+    embedding_and_inserting_node,
+    route_to_rejection_or_chunking,
+    save_to_cloudinary_and_db_node,
+)
 from langgraph.graph import StateGraph, END
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from .model import GraphState
+from typing import Optional
 
 
-def build_graph():
+def build_ingestion_graph(checkpointer: Optional[AsyncPostgresSaver] = None):
+    """Build the ingestion graph with optional persistence."""
     workflow = StateGraph(GraphState)
 
     workflow.add_node("LLM_check_node", LLM_check_node)
     workflow.add_node("rejection_node", rejection_node)
     workflow.add_node("chunking_node", chunking_node)
     workflow.add_node("citation_extraction_node", citation_extraction_node)
-    workflow.add_node("embedding_and_inserting_node",
-                      embedding_and_inserting_node)
-    workflow.add_node("save_to_cloudinary_and_db_node",
-                      save_to_cloudinary_and_db_node)
+    workflow.add_node("embedding_and_inserting_node", embedding_and_inserting_node)
+    workflow.add_node("save_to_cloudinary_and_db_node", save_to_cloudinary_and_db_node)
 
     workflow.set_entry_point("LLM_check_node")
 
@@ -24,16 +33,27 @@ def build_graph():
         {
             "chunking_node": "chunking_node",
             "rejection_node": "rejection_node",
-        }
+        },
     )
 
-
-    workflow.add_edge("chunking_node", "citation_extraction_node")        # 👈
+    workflow.add_edge("chunking_node", "citation_extraction_node")
     workflow.add_edge("citation_extraction_node", "embedding_and_inserting_node")
-    workflow.add_edge("embedding_and_inserting_node" , "save_to_cloudinary_and_db_node")
+    workflow.add_edge("embedding_and_inserting_node", "save_to_cloudinary_and_db_node")
     workflow.add_edge("save_to_cloudinary_and_db_node", END)
     workflow.add_edge("rejection_node", END)
 
-    return workflow.compile()
+    # Compile with optional checkpointer for persistence
+    return workflow.compile(checkpointer=checkpointer)
 
-graph = build_graph()
+
+# Initialize without checkpointer (will be set on app startup)
+ingestion_graph: Optional[object] = None
+
+
+def get_ingestion_graph():
+    """Get the initialized ingestion graph."""
+    if ingestion_graph is None:
+        raise RuntimeError(
+            "Ingestion graph not initialized. Call init_ingestion_graph() on app startup."
+        )
+    return ingestion_graph

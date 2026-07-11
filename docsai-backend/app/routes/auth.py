@@ -53,8 +53,8 @@ async def register(body: RegisterRequest, response: Response , db: AsyncSession 
 async def login(body: LoginRequest ,  response: Response , db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
-
-    if not user or not verify_password(body.password, user.hashed_password):
+    
+    if not user or not verify_password(body.password, str(user.hashed_password)):
         raise HTTPException(status_code=401, detail="Invalid email or password.")
 
     token = create_jwt({"sub": str(user.id), "username": user.username})
